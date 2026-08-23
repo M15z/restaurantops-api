@@ -100,4 +100,56 @@ func (h *MenuHandler) CreateItem(w http.ResponseWriter, r *http.Request) {
 
 func (h *MenuHandler) UpdateItem(w http.ResponseWriter, r *http.Request) {
 
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid id"})
+		return
+	}
+
+	var req menuItemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+		return
+	}
+
+	item := models.MenuItem{
+		ID:          id,
+		Name:        req.Name,
+		Price:       req.Price,
+		IsAvailable: req.IsAvailable,
+		Category:    models.Category{ID: req.CategoryID},
+	}
+
+	if err := h.menu.UpdateItem(r.Context(), item); err != nil {
+		if errors.Is(err, services.ErrInvalidInput) {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "name, positive price, and category_id required"})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not update item"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "Updated"})
+}
+
+type availabitlyRequest struct {
+	IsAvailable bool `json:"is_available"`
+}
+
+func (h *MenuHandler) SetAvailability(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt("id", 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid id"})
+	}
+
+	var req availabitlyRequest
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
+	}
+
+	if err := h.menu.SetItemAvailability(r.Context(), id, req.IsAvailable); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "could not update availability"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "Updated"})
 }
